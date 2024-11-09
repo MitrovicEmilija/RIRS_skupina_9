@@ -1,0 +1,31 @@
+create or replace package body "CP_SCRIPTS" as
+
+  --this function is meant for authenticating users
+  function custom_authentication(p_username in varchar2,
+                                 p_password in varchar2) return boolean
+  is
+    w_password        varchar2(100);
+    w_stored_password varchar2(100);
+    w_boolean         boolean;
+  begin
+    --check if users exsists + get their password
+    select geslo
+      into w_stored_password
+      from UPORABNIK
+     where upper(email) = upper(p_username);
+  
+    --Get hashed password
+    select standard_hash(p_password,'MD5') into w_password from dual;
+  
+    -- se gesli ujemata?
+    if w_password = w_stored_password then
+      return true;
+    else
+      return false;
+    end if;
+  exception when no_data_found then
+    return false;
+  end custom_authentication;
+
+end "CP_SCRIPTS";
+/
