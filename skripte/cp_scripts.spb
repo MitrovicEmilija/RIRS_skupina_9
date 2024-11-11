@@ -1,0 +1,93 @@
+create or replace package body "CP_SCRIPTS" as
+
+  --this function is meant for authenticating users
+  function custom_authentication(p_username in varchar2,
+                                 p_password in varchar2) return boolean
+  is
+    w_password        varchar2(100);
+    w_stored_password varchar2(100);
+    w_boolean         boolean;
+  begin
+    --check if users exsists + get their password
+    select geslo
+      into w_stored_password
+      from UPORABNIK
+     where upper(email) = upper(p_username);
+  
+    --Get hashed password
+    select standard_hash(p_password,'MD5') into w_password from dual;
+  
+    -- se gesli ujemata?
+    if w_password = w_stored_password then
+      return true;
+    else
+      return false;
+    end if;
+  exception when no_data_found then
+    return false;
+  end custom_authentication;
+
+  function return_name(user_id in number) return varchar2
+  is
+    w_username varchar2(400);
+  begin
+    select ime into w_username from UPORABNIK where id = user_id;
+    return w_username;
+  end return_name;
+
+  function return_price(computer_id in number) return number
+  is
+    w_price number;
+  begin
+    select sum(cena) into w_price from KOMPONENTA where racunalnik = computer_id;
+    return w_price;
+  end return_price;
+
+  function return_avg_price(computer_id in number) return number
+  is
+    w_price number;
+  begin
+    select avg(cena) into w_price from KOMPONENTA where racunalnik = computer_id;
+    return w_price;
+  end return_avg_price;
+
+ --Procedure for creating a new user account
+ procedure create_user(p_in_email    in varchar2,
+                       p_in_password in varchar2) is
+   w_message  varchar2(2000);
+   w_password varchar2(100);
+   w_user_id  number;
+ begin
+   --Get hashed password
+   select standard_hash(p_in_password,'MD5') into w_password from dual;
+ 
+   --check if email already exists
+   begin
+     select geslo 
+       into w_password
+       from UPORABNIK
+     where upper(email) = upper(p_in_email);
+     w_message := 'This E-mail already exists!';
+ 
+   exception when no_data_found then
+     apex_debug.message(p_message =>'email does not exist yet',p_level => 3);
+   end;
+ 
+   if w_message is null then
+     apex_debug.message(p_message =>'I am inserting',p_level => 3);
+     insert into UPORABNIK(email,
+                         geslo,
+                         pravica)
+                  values(p_in_email,
+                         w_password,
+                         2)
+                 returning id into w_user_id;
+   else
+     raise_application_error(-20001,w_message);
+   end if;
+ 
+   apex_debug.message(p_message =>'Success',p_level => 3);
+ end create_user;
+
+end "CP_SCRIPTS";
+/
